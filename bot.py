@@ -20,7 +20,18 @@ from aiogram.types import (
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.storage.memory import MemoryStorage
+import asyncio
+from aiohttp import ClientSession
 
+async def keep_alive():
+    while True:
+        try:
+            async with ClientSession() as session:
+                async with session.get('https://google.com'):
+                    pass
+        except:
+            pass
+        await asyncio.sleep(300)  # Каждые 5 минут
 # ===================== НАСТРОЙКИ =====================
 BOT_TOKEN = "8546640668:AAEVHTdr4Qw2-CVyQlnFFKsVyvuods5Pibo"
 ADMIN_ID = 6086536190
@@ -177,14 +188,13 @@ def get_bp_keyboard():
             [KeyboardButton(text="💎 GOLD PASS - 128,490 сум")],
             [KeyboardButton(text="💎 GOLD PASS + - 212,490 сум")],
             [KeyboardButton(text="💎 1 LVL - 20,490 сум")],
-            [InlineKeyboardButton(text="💎 10 LVL - 144,490 сум")],
+            [KeyboardButton(text="💎 10 LVL - 144,490 сум")],  # <-- ИЗМЕНИЛ НА KeyboardButton!
             [KeyboardButton(text="💎 20 LVL - 254,490 сум")],
             [KeyboardButton(text="💎 45 LVL - 442,490 сум")],
             [KeyboardButton(text="❌ Отмена")]
         ],
         resize_keyboard=True
     )
-
 def get_stars_keyboard():
     return ReplyKeyboardMarkup(
         keyboard=[
@@ -2022,6 +2032,9 @@ async def main():
         if not os.path.exists(file):
             save_data({}, file)
             logger.info(f"📁 Создан файл: {file}")
+    
+    # ВАЖНО: ЗАПУСКАЕМ keep_alive В ФОНЕ
+    asyncio.create_task(keep_alive())
     
     await bot.delete_webhook(drop_pending_updates=True)
     await dp.start_polling(bot)
