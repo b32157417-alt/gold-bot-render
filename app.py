@@ -20,18 +20,27 @@ from aiogram.types import (
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.storage.memory import MemoryStorage
-import asyncio
-from aiohttp import ClientSession
+# ===================== FLASK ДЛЯ RENDER =====================
+from flask import Flask, request as flask_request, jsonify
+import threading
 
-async def keep_alive():
-    while True:
-        try:
-            async with ClientSession() as session:
-                async with session.get('https://google.com'):
-                    pass
-        except:
-            pass
-        await asyncio.sleep(300)  # Каждые 5 минут
+# Создаем Flask app (для UptimeRobot пинга)
+flask_app = Flask(__name__)
+
+@flask_app.route('/')
+def flask_home():
+    return "✅ Gold Bot is ALIVE! Ping me every 5-10 minutes.", 200
+
+@flask_app.route('/health')
+def flask_health():
+    return "OK", 200
+
+# Запускаем Flask в отдельном потоке
+def run_flask():
+    import os
+    port = int(os.environ.get('PORT', 5000))
+    flask_app.run(host='0.0.0.0', port=port, debug=False, use_reloader=False)
+
 # ===================== НАСТРОЙКИ =====================
 BOT_TOKEN = "8546640668:AAEVHTdr4Qw2-CVyQlnFFKsVyvuods5Pibo"
 ADMIN_ID = 6086536190
@@ -188,13 +197,14 @@ def get_bp_keyboard():
             [KeyboardButton(text="💎 GOLD PASS - 128,490 сум")],
             [KeyboardButton(text="💎 GOLD PASS + - 212,490 сум")],
             [KeyboardButton(text="💎 1 LVL - 20,490 сум")],
-            [KeyboardButton(text="💎 10 LVL - 144,490 сум")],  # <-- ИЗМЕНИЛ НА KeyboardButton!
+            [InlineKeyboardButton(text="💎 10 LVL - 144,490 сум")],
             [KeyboardButton(text="💎 20 LVL - 254,490 сум")],
             [KeyboardButton(text="💎 45 LVL - 442,490 сум")],
             [KeyboardButton(text="❌ Отмена")]
         ],
         resize_keyboard=True
     )
+
 def get_stars_keyboard():
     return ReplyKeyboardMarkup(
         keyboard=[
@@ -2033,12 +2043,21 @@ async def main():
             save_data({}, file)
             logger.info(f"📁 Создан файл: {file}")
     
-    # ВАЖНО: ЗАПУСКАЕМ keep_alive В ФОНЕ
-    asyncio.create_task(keep_alive())
-    
     await bot.delete_webhook(drop_pending_updates=True)
     await dp.start_polling(bot)
-
+# ===================== ЗАПУСК ВСЕГО =====================
 if __name__ == "__main__":
+    logger.info("🚀 Запуск Gold Bot...")
+    
+    # Запускаем Flask в отдельном потоке (для пинга)
+    flask_thread = threading.Thread(target=run_flask, daemon=True)
+    flask_thread.start()
+    logger.info("✅ Flask запущен для пинга")
+    
+    # НЕМНОГО ЖДЕМ, чтобы Flask успел запуститься
+    import time
+    time.sleep(3)
+    
+    # Запускаем Telegram бота
+    logger.info("🤖 Запускаю Telegram бота...")
     asyncio.run(main())
-
